@@ -283,7 +283,7 @@ int gasket_page_table_init(struct gasket_page_table **ppg_tbl,
 		page_table_config->base_reg,
 		page_table_config->extended_reg);
 
-	*ppg_tbl = kzalloc(sizeof(**ppg_tbl), GFP_KERNEL);
+	*ppg_tbl = kzalloc(sizeof(**ppg_tbl), GFP_KERNEL | GFP_DMA);
 	if (!*ppg_tbl) {
 		dev_dbg(device, "No memory for page table\n");
 		return -ENOMEM;
@@ -606,8 +606,12 @@ static int gasket_perform_mapping(struct gasket_page_table *pg_tbl,
             u32 upper = (dma_addr & 0xFFFFFFFF00000000) >> 32;
             writel(lower, &slots[i]);
             writel(upper, &slots[i]+4);
-			//writel(dma_addr, &slots[i]);
 			//writeq(dma_addr, &slots[i]);
+            lower = readl(&slots[i]);
+            upper = readl(&slots[i]+4);
+            u64 result = (upper << 32) | lower;
+            dev_info(pg_tbl->device, "Perform Mapping -  dma_addr: 0x%llx, read back: 0x%llx", dma_addr, result);
+
         }
 		else {
             //dev_info(pg_tbl->device, "Extended Mapping dma_addr: 0x%llx\n", dma_addr);
@@ -994,7 +998,11 @@ static int gasket_alloc_extended_subtable(struct gasket_page_table *pg_tbl,
     u32 upper = (dma_addr & 0xFFFFFFFF00000000) >> 32;
 	writel(lower, slot);
 	writel(upper, slot+4);
-	//writeq(dma_addr, slot);
+	// writeq(dma_addr, slot);
+    lower = readl(slot);
+    upper = readl(slot+4);
+    u64 result = (upper << 32) | lower;
+    dev_info(pg_tbl->device, "Subtable DMA address -  dma_addr: 0x%llx, read back: 0x%llx", dma_addr, result);
 
 	pte->flags = SET(FLAGS_STATUS, pte->flags, PTE_INUSE);
 
@@ -1529,7 +1537,7 @@ int gasket_alloc_coherent_memory(struct gasket_dev *gasket_dev, u64 size,
 		return -EINVAL;
 
 	mem = dma_alloc_coherent(gasket_get_device(gasket_dev),
-				 num_pages * PAGE_SIZE, &handle, GFP_KERNEL);
+				 num_pages * PAGE_SIZE, &handle, GFP_KERNEL | GFP_DMA);
 	if (!mem)
 		goto nomem;
 
@@ -1538,7 +1546,7 @@ int gasket_alloc_coherent_memory(struct gasket_dev *gasket_dev, u64 size,
 	/* allocate the physical memory block */
 	gasket_dev->page_table[index]->coherent_pages =
 		kcalloc(num_pages, sizeof(struct gasket_coherent_page_entry),
-			GFP_KERNEL);
+			GFP_KERNEL | GFP_DMA);
 	if (!gasket_dev->page_table[index]->coherent_pages)
 		goto nomem;
 
