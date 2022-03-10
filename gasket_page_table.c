@@ -606,11 +606,12 @@ static int gasket_perform_mapping(struct gasket_page_table *pg_tbl,
             u32 upper = (dma_addr & 0xFFFFFFFF00000000) >> 32;
             writel(lower, &slots[i]);
             writel(upper, &slots[i]+4);
-			//writeq(dma_addr, &slots[i]);
-            lower = readl(&slots[i]);
-            upper = readl(&slots[i]+4);
-            u64 result = (upper << 32) | lower;
-            dev_info(pg_tbl->device, "Perform Mapping -  dma_addr: 0x%llx, read back: 0x%llx", dma_addr, result);
+			// writeq(dma_addr, &slots[i]); // Switching to this write will make the driver work.
+            u64 lower_rb = readl(&slots[i]);
+            u64 upper_rb = readl(&slots[i]+4);
+            u64 result_32 = (upper_rb << 32) | lower_rb;
+            u64 result_64 = readq(&slots[i]);
+            dev_info(pg_tbl->device, "Perform Mapping -  dma_addr: 0x%llx, read back (32-bit): 0x%llx, read back (64-bit): 0x%llx", dma_addr, result_32, result_64);
 
         }
 		else {
@@ -998,11 +999,12 @@ static int gasket_alloc_extended_subtable(struct gasket_page_table *pg_tbl,
     u32 upper = (dma_addr & 0xFFFFFFFF00000000) >> 32;
 	writel(lower, slot);
 	writel(upper, slot+4);
-	// writeq(dma_addr, slot);
-    lower = readl(slot);
-    upper = readl(slot+4);
-    u64 result = (upper << 32) | lower;
-    dev_info(pg_tbl->device, "Subtable DMA address -  dma_addr: 0x%llx, read back: 0x%llx", dma_addr, result);
+	// writeq(dma_addr, slot); // Switching to this write will make the driver work.
+    u64 lower_rb = readl(slot);
+    u64 upper_rb = readl(slot+4);
+    u64 result_32 = (upper_rb << 32) | lower_rb;
+    u64 result_64 = readq(slot);
+    dev_info(pg_tbl->device, "Subtable DMA Mapping -  dma_addr: 0x%llx, read back (32-bit): 0x%llx, read back (64-bit): 0x%llx", dma_addr, result_32, result_64);
 
 	pte->flags = SET(FLAGS_STATUS, pte->flags, PTE_INUSE);
 
