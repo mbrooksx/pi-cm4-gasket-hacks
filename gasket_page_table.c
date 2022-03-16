@@ -599,23 +599,23 @@ static int gasket_perform_mapping(struct gasket_page_table *pg_tbl,
 		/* Make the DMA-space address available to the device. */
 		dma_addr = (ptes[i].dma_addr + offset) | GASKET_VALID_SLOT_FLAG;
 
-        //dev_info(pg_tbl->device, "Num Simple: 0x%llx\b\n", pg_tbl->num_simple_entries);
+        // dev_info(pg_tbl->device, "Num Simple: 0x%llx\b\n", pg_tbl->num_simple_entries);
 		if (is_simple_mapping) {
-            //dev_info(pg_tbl->device, "Simple Mapping dma_addr: 0x%llx slot_id 0x%llx\n", dma_addr, &slots[i] - pg_tbl->base_slot);
+            // dev_info(pg_tbl->device, "Simple Mapping dma_addr: 0x%llx slot_id 0x%llx\n", dma_addr, &slots[i] - pg_tbl->base_slot);
             u32 lower = dma_addr & 0xFFFFFFFF;
             u32 upper = (dma_addr & 0xFFFFFFFF00000000) >> 32;
             writel(lower, &slots[i]);
-            writel(upper, &slots[i]+4);
+            writel(upper, ((char*)&slots[i]) + 4);
 			// writeq(dma_addr, &slots[i]); // Switching to this write will make the driver work.
             u64 lower_rb = readl(&slots[i]);
-            u64 upper_rb = readl(&slots[i]+4);
+            u64 upper_rb = readl(((char*)&slots[i]) + 4);
             u64 result_32 = (upper_rb << 32) | lower_rb;
             u64 result_64 = readq(&slots[i]);
             dev_info(pg_tbl->device, "Perform Mapping -  dma_addr: 0x%llx, read back (32-bit): 0x%llx, read back (64-bit): 0x%llx", dma_addr, result_32, result_64);
 
         }
 		else {
-            //dev_info(pg_tbl->device, "Extended Mapping dma_addr: 0x%llx\n", dma_addr);
+            // dev_info(pg_tbl->device, "Extended Mapping dma_addr: 0x%llx\n", dma_addr);
 			((u64 __force *)slots)[i] = dma_addr;
         }
 
@@ -998,10 +998,10 @@ static int gasket_alloc_extended_subtable(struct gasket_page_table *pg_tbl,
     u32 lower = dma_addr & 0xFFFFFFFF;
     u32 upper = (dma_addr & 0xFFFFFFFF00000000) >> 32;
 	writel(lower, slot);
-	writel(upper, slot+4);
+	writel(upper, ((char*)slot) + 4);
 	// writeq(dma_addr, slot); // Switching to this write will make the driver work.
     u64 lower_rb = readl(slot);
-    u64 upper_rb = readl(slot+4);
+    u64 upper_rb = readl(((char*)slot) + 4);
     u64 result_32 = (upper_rb << 32) | lower_rb;
     u64 result_64 = readq(slot);
     dev_info(pg_tbl->device, "Subtable DMA Mapping -  dma_addr: 0x%llx, read back (32-bit): 0x%llx, read back (64-bit): 0x%llx", dma_addr, result_32, result_64);
